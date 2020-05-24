@@ -2,6 +2,8 @@ import django_rq
 
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.core import serializers
+
 
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
@@ -11,6 +13,7 @@ from rest_framework import status
 from .models import Grapher, Story
 from .serializers import AssetSerializer, GrapherSerializer
 from .utils import asset_compress_worker
+
 
 class UploadStoryView(APIView):
     parser_class = (FileUploadParser,)
@@ -27,7 +30,7 @@ class UploadStoryView(APIView):
                     return Response({
                         'error': 'Grapher creation failed. No `first_name`'
                     }, status=status.HTTP_400_BAD_REQUEST)
-                grapher = Grapher.objects.create(
+                grapher = requestGrapher.objects.create(
                     first_name = grapher_first_name,
                     last_name = grapher_last_name
                 )
@@ -75,3 +78,11 @@ class UploadStoryView(APIView):
             queue.enqueue(asset_compress_worker, **payload)
 
             return Response(data=payload, status=status.HTTP_201_CREATED)
+
+
+class AllStoriesView(APIView):
+    def get(self, request, *args, **kwargs):
+        story = Story.objects.all().order_by('-timestamp')
+        data = serializers.serialize("json", story)
+        print(data)
+        return Response(data=data, status=status.HTTP_200_OK)
